@@ -96,10 +96,9 @@ Puedes agregar aquí imágenes de la aplicación.
 
 Ejemplo:
 
-```
-assets/captura1.png
-assets/captura2.png
-```
+![Interfaz Principal](screenshots/captura1.png)
+![Historial](screenshots/captura2.png)
+![Acerca de](screenshots/captura3.png)
 
 ---
 
