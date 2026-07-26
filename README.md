@@ -63,7 +63,7 @@ SpotifyDownloader/
 Clona el repositorio:
 
 ```bash
-git clone https://github.com/TU-USUARIO/SpotifyDownloader.git
+git clone https://github.com/M1NUS5/SpotDown.git
 ```
 
 Entra a la carpeta del proyecto:
