@@ -86,7 +86,7 @@ class SpotifyDownloaderApp(ctk.CTk):
         ruta_logo = ASSETS_DIR / "logo.png"
         self.logo = None
         if ruta_logo.exists():
-            imagen_logo = Image.open("assets/logo.png")
+            imagen_logo = Image.open(ASSETS_DIR / "logo.png")
             self.logo = ctk.CTkImage(
                 light_image=imagen_logo,
                 dark_image=imagen_logo,
