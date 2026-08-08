@@ -1,6 +1,8 @@
 import os
 import threading
 import customtkinter as ctk
+import subprocess
+import platform
 
 from PIL import Image
 from pathlib import Path
@@ -375,7 +377,16 @@ class SpotifyDownloaderApp(ctk.CTk):
             )
             return
 
-        os.startfile(carpeta)
+        sistema = platform.system()
+
+        if sistema == "Windows":
+            os.startfile(carpeta)
+
+        elif sistema == "Darwin":
+            subprocess.run(["open", carpeta])
+
+        elif sistema == "Linux":
+            subprocess.run(["xdg-open", carpeta])
 
     def agregar_registro(self, mensaje: str):
         self.registro.configure(
