@@ -3,6 +3,8 @@ import threading
 import customtkinter as ctk
 import subprocess
 import platform
+import sys
+
 
 from PIL import Image
 from pathlib import Path

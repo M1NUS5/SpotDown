@@ -1350,7 +1350,7 @@
 		</data>
 		<key>Resources/base_library.zip</key>
 		<data>
-		/dWGQceJIqp/xAWfk9QPIkekOGU=
+		GGlooZNbrtckgS1ESvkRjGU9Vdg=
 		</data>
 		<key>Resources/customtkinter/assets/fonts/CustomTkinter_shapes_font.otf</key>
 		<data>
@@ -1610,10 +1610,34 @@
 			<key>requirement</key>
 			<string>cdhash H"5b39b5ef388812a4eb8b92d2ef5526f84247e886"</string>
 		</dict>
-		<key>Frameworks/assets</key>
+		<key>Frameworks/assets/ffmpeg</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			qj3iQ7uTHd4tn93hYpcAE79Zdnk=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"aa3de243bb931dde2d9fdde162970013bf597679"</string>
+		</dict>
+		<key>Frameworks/assets/icon.icns</key>
 		<dict>
 			<key>symlink</key>
-			<string>../Resources/assets</string>
+			<string>../../Resources/assets/icon.icns</string>
+		</dict>
+		<key>Frameworks/assets/icon.ico</key>
+		<dict>
+			<key>symlink</key>
+			<string>../../Resources/assets/icon.ico</string>
+		</dict>
+		<key>Frameworks/assets/icon.iconset</key>
+		<dict>
+			<key>symlink</key>
+			<string>../../Resources/assets/icon.iconset</string>
+		</dict>
+		<key>Frameworks/assets/logo.png</key>
+		<dict>
+			<key>symlink</key>
+			<string>../../Resources/assets/logo.png</string>
 		</dict>
 		<key>Frameworks/base_library.zip</key>
 		<dict>
@@ -1624,6 +1648,15 @@
 		<dict>
 			<key>symlink</key>
 			<string>../Resources/customtkinter</string>
+		</dict>
+		<key>Frameworks/ffmpeg</key>
+		<dict>
+			<key>cdhash</key>
+			<data>
+			qj3iQ7uTHd4tn93hYpcAE79Zdnk=
+			</data>
+			<key>requirement</key>
+			<string>cdhash H"aa3de243bb931dde2d9fdde162970013bf597679"</string>
 		</dict>
 		<key>Frameworks/libXau.6.dylib</key>
 		<dict>
@@ -4471,6 +4504,11 @@
 			<key>symlink</key>
 			<string>../Frameworks/_tkinter.cpython-312-darwin.so</string>
 		</dict>
+		<key>Resources/assets/ffmpeg</key>
+		<dict>
+			<key>symlink</key>
+			<string>../../Frameworks/assets/ffmpeg</string>
+		</dict>
 		<key>Resources/assets/icon.icns</key>
 		<dict>
 			<key>hash2</key>
@@ -4566,7 +4604,7 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			wHI4XZXRzXezkRkvXg9h/rdXNAREQvPoDHzq3R890q4=
+			oZVMjYe1prGrsC7aG48Q7p+baZB9Ei8dmR+S/MATQK8=
 			</data>
 		</dict>
 		<key>Resources/customtkinter/assets/fonts/CustomTkinter_shapes_font.otf</key>
@@ -4624,6 +4662,11 @@
 			<data>
 			T0h4uMgJdZcUb/J/sgICl+skvZ0nuf71fsN3UTLxKqU=
 			</data>
+		</dict>
+		<key>Resources/ffmpeg</key>
+		<dict>
+			<key>symlink</key>
+			<string>../Frameworks/ffmpeg</string>
 		</dict>
 		<key>Resources/icon.icns</key>
 		<dict>

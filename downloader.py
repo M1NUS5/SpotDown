@@ -2,6 +2,7 @@ import os
 import re
 import subprocess
 import threading
+import sys
 from collections.abc import Callable
 
 
@@ -44,12 +45,44 @@ def ejecutar_spotdl(
             "{artists} - {title}.{output-ext}"
         )
 
-    comando = [
-        "spotdl",
-        enlace,
-        "--output",
-        formato_salida
-    ]
+    if getattr(sys, "frozen", False):
+        # SpotDown.app/Contents/MacOS/SpotDown
+        contents_dir = os.path.dirname(
+            os.path.dirname(sys.executable)
+        )
+
+        ejecutable_spotdl = os.path.join(
+            contents_dir,
+            "Resources",
+            "spotdl_runner",
+            "spotdl_runner"
+        )
+
+        ffmpeg = os.path.join(
+            contents_dir,
+            "Frameworks",
+            "ffmpeg"
+        )
+
+        comando = [
+            ejecutable_spotdl,
+            enlace,
+            "--ffmpeg",
+            ffmpeg,
+            "--output",
+            formato_salida
+        ]
+
+    else:
+        # Ejecución normal desde Python / entorno virtual.
+        comando = [
+            sys.executable,
+            "-m",
+            "spotdl",
+            enlace,
+            "--output",
+            formato_salida
+        ]
 
     entorno = os.environ.copy()
     entorno["PYTHONUTF8"] = "1"
