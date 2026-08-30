@@ -32,6 +32,22 @@ ASSETS_DIR = BASE_DIR / "assets"
 
 class SpotifyDownloaderApp(ctk.CTk):
 
+    def mostrar_error_entorno(self, mensaje: str):
+        """
+        Llamado desde el splash cuando no se pudo preparar el
+        entorno de spotDL/yt-dlp (sin internet, sin Python 3, etc.).
+        Avisa al usuario y evita que intente descargar sin backend.
+        """
+        messagebox.showerror("No se pudo preparar SpotDown", mensaje)
+
+        if hasattr(self, "btn_descargar"):
+            self.btn_descargar.configure(state="disabled")
+
+        if hasattr(self, "estado"):
+            self.estado.configure(
+                text="Estado: spotDL/yt-dlp no disponible."
+            )
+
     def __init__(self):
         super().__init__()
         self.title("Spotify Downloader")

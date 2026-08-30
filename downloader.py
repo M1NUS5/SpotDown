@@ -5,6 +5,8 @@ import threading
 import sys
 from collections.abc import Callable
 
+import runtime_manager
+
 
 # Código especial para distinguir una cancelación de un error real.
 CODIGO_CANCELADO = -1
@@ -51,21 +53,23 @@ def ejecutar_spotdl(
             os.path.dirname(sys.executable)
         )
 
-        ejecutable_spotdl = os.path.join(
-            contents_dir,
-            "Resources",
-            "spotdl_runner",
-            "spotdl_runner"
-        )
-
         ffmpeg = os.path.join(
             contents_dir,
             "Frameworks",
             "ffmpeg"
         )
 
+        # spotDL/yt-dlp ya no viven congelados dentro del .app: se
+        # ejecutan desde el entorno gestionado (runtime_manager), que
+        # se mantiene actualizado automáticamente. Esto es justo lo
+        # que permite que las descargas sigan funcionando aunque
+        # YouTube cambie algo entre una versión y otra de la app.
+        python_entorno = runtime_manager.python_para_descargas()
+
         comando = [
-            ejecutable_spotdl,
+            python_entorno,
+            "-m",
+            "spotdl",
             enlace,
             "--ffmpeg",
             ffmpeg,
