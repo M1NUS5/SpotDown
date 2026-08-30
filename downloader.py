@@ -47,6 +47,34 @@ def ejecutar_spotdl(
             "{artists} - {title}.{output-ext}"
         )
 
+    # Archivo donde spotDL anota qué canciones ya se descargaron.
+    # Si una playlist/álbum se interrumpe a medias, la próxima vez
+    # retoma donde se quedó en vez de descargar todo de nuevo.
+    archivo_historial = os.path.join(carpeta, ".spotdown_historial.spotdl")
+
+    # Proveedores de audio en orden de prioridad: si youtube-music no
+    # encuentra o no puede descargar la canción, spotDL prueba con
+    # youtube, y si ese también falla, con piped (un espejo alterno
+    # de YouTube). Esto evita que una sola fuente caída tumbe toda
+    # una playlist o álbum.
+    #
+    # --only-verified-results restringe las coincidencias a canales
+    # verificados de artistas, para evitar que se descarguen covers,
+    # remixes o versiones en vivo en lugar de la canción original.
+    opciones_comunes = [
+        "--audio",
+        "youtube-music",
+        "youtube",
+        "piped",
+        "--only-verified-results",
+        "--archive",
+        archivo_historial,
+        "--max-retries",
+        "3",
+        "--output",
+        formato_salida
+    ]
+
     if getattr(sys, "frozen", False):
         # SpotDown.app/Contents/MacOS/SpotDown
         contents_dir = os.path.dirname(
@@ -73,8 +101,7 @@ def ejecutar_spotdl(
             enlace,
             "--ffmpeg",
             ffmpeg,
-            "--output",
-            formato_salida
+            *opciones_comunes
         ]
 
     else:
@@ -84,8 +111,7 @@ def ejecutar_spotdl(
             "-m",
             "spotdl",
             enlace,
-            "--output",
-            formato_salida
+            *opciones_comunes
         ]
 
     entorno = os.environ.copy()
@@ -223,4 +249,4 @@ def extraer_porcentaje(linea: str) -> float | None:
         return porcentaje / 100
 
     except ValueError:
-        return None
+        return NoneARCHIVO_TERMINADO
