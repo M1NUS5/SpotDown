@@ -2,7 +2,10 @@ import os
 import re
 import subprocess
 import threading
+import sys
 from collections.abc import Callable
+
+import runtime_manager
 
 
 # Código especial para distinguir una cancelación de un error real.
@@ -44,12 +47,46 @@ def ejecutar_spotdl(
             "{artists} - {title}.{output-ext}"
         )
 
-    comando = [
-        "spotdl",
-        enlace,
-        "--output",
-        formato_salida
-    ]
+    if getattr(sys, "frozen", False):
+        # SpotDown.app/Contents/MacOS/SpotDown
+        contents_dir = os.path.dirname(
+            os.path.dirname(sys.executable)
+        )
+
+        ffmpeg = os.path.join(
+            contents_dir,
+            "Frameworks",
+            "ffmpeg"
+        )
+
+        # spotDL/yt-dlp ya no viven congelados dentro del .app: se
+        # ejecutan desde el entorno gestionado (runtime_manager), que
+        # se mantiene actualizado automáticamente. Esto es justo lo
+        # que permite que las descargas sigan funcionando aunque
+        # YouTube cambie algo entre una versión y otra de la app.
+        python_entorno = runtime_manager.python_para_descargas()
+
+        comando = [
+            python_entorno,
+            "-m",
+            "spotdl",
+            enlace,
+            "--ffmpeg",
+            ffmpeg,
+            "--output",
+            formato_salida
+        ]
+
+    else:
+        # Ejecución normal desde Python / entorno virtual.
+        comando = [
+            sys.executable,
+            "-m",
+            "spotdl",
+            enlace,
+            "--output",
+            formato_salida
+        ]
 
     entorno = os.environ.copy()
     entorno["PYTHONUTF8"] = "1"

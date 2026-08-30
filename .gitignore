@@ -33,4 +33,5 @@ dist/
 *.log
 
 # Variables de entorno
-.env
+.envdmg_temp/
+*.dmg

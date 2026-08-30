@@ -1,0 +1,463 @@
+diff --git a/downloader.py b/downloader.py
+index 9bf37a5..33bc2bb 100644
+--- a/downloader.py
++++ b/downloader.py
+@@ -5,6 +5,8 @@ import threading
+ import sys
+ from collections.abc import Callable
+ 
++import runtime_manager
++
+ 
+ # Código especial para distinguir una cancelación de un error real.
+ CODIGO_CANCELADO = -1
+@@ -51,21 +53,23 @@ def ejecutar_spotdl(
+             os.path.dirname(sys.executable)
+         )
+ 
+-        ejecutable_spotdl = os.path.join(
+-            contents_dir,
+-            "Resources",
+-            "spotdl_runner",
+-            "spotdl_runner"
+-        )
+-
+         ffmpeg = os.path.join(
+             contents_dir,
+             "Frameworks",
+             "ffmpeg"
+         )
+ 
++        # spotDL/yt-dlp ya no viven congelados dentro del .app: se
++        # ejecutan desde el entorno gestionado (runtime_manager), que
++        # se mantiene actualizado automáticamente. Esto es justo lo
++        # que permite que las descargas sigan funcionando aunque
++        # YouTube cambie algo entre una versión y otra de la app.
++        python_entorno = runtime_manager.python_para_descargas()
++
+         comando = [
+-            ejecutable_spotdl,
++            python_entorno,
++            "-m",
++            "spotdl",
+             enlace,
+             "--ffmpeg",
+             ffmpeg,
+diff --git a/gui.py b/gui.py
+index 28aa3f9..e4631d7 100644
+--- a/gui.py
++++ b/gui.py
+@@ -32,6 +32,22 @@ ASSETS_DIR = BASE_DIR / "assets"
+ 
+ class SpotifyDownloaderApp(ctk.CTk):
+ 
++    def mostrar_error_entorno(self, mensaje: str):
++        """
++        Llamado desde el splash cuando no se pudo preparar el
++        entorno de spotDL/yt-dlp (sin internet, sin Python 3, etc.).
++        Avisa al usuario y evita que intente descargar sin backend.
++        """
++        messagebox.showerror("No se pudo preparar SpotDown", mensaje)
++
++        if hasattr(self, "btn_descargar"):
++            self.btn_descargar.configure(state="disabled")
++
++        if hasattr(self, "estado"):
++            self.estado.configure(
++                text="Estado: spotDL/yt-dlp no disponible."
++            )
++
+     def __init__(self):
+         super().__init__()
+         self.title("Spotify Downloader")
+diff --git a/runtime_manager.py b/runtime_manager.py
+new file mode 100644
+index 0000000..42fb545
+--- /dev/null
++++ b/runtime_manager.py
+@@ -0,0 +1,280 @@
++"""
++Gestiona un entorno Python independiente para spotDL/yt-dlp.
++
++Por qué existe este módulo:
++Cuando SpotDown se empaqueta como app de macOS, spotDL y yt-dlp
++quedaban "congelados" dentro del ejecutable. YouTube cambia con
++frecuencia la forma en que protege sus streams, y cuando eso pasa,
++yt-dlp necesita actualizarse para seguir funcionando. Una versión
++congelada dentro de un .app no puede actualizarse sola.
++
++Este módulo crea (la primera vez) un entorno virtual de Python en la
++carpeta de datos del usuario y, de ahí en adelante, revisa
++periódicamente si hay una versión más nueva de spotDL/yt-dlp y la
++instala automáticamente, sin necesidad de reconstruir ni reinstalar
++la app.
++"""
++
++import json
++import os
++import platform
++import shutil
++import subprocess
++import sys
++import time
++from collections.abc import Callable
++from pathlib import Path
++
++
++NOMBRE_APP = "SpotDown"
++PAQUETES_GESTIONADOS = ["spotdl", "yt-dlp"]
++
++# No molestamos al usuario revisando actualizaciones en cada arranque:
++# solo lo hacemos si ya pasaron este tiempo desde la última revisión.
++INTERVALO_ACTUALIZACION_HORAS = 24
++
++
++def directorio_datos_app() -> Path:
++    """
++    Carpeta persistente propia de SpotDown, fuera del .app,
++    donde vive el entorno Python gestionado.
++    """
++    sistema = platform.system()
++
++    if sistema == "Darwin":
++        base = Path.home() / "Library" / "Application Support" / NOMBRE_APP
++    elif sistema == "Windows":
++        base = Path(os.environ.get("APPDATA", Path.home())) / NOMBRE_APP
++    else:
++        base = Path.home() / ".local" / "share" / NOMBRE_APP
++
++    base.mkdir(parents=True, exist_ok=True)
++    return base
++
++
++def _ruta_entorno() -> Path:
++    return directorio_datos_app() / "runtime"
++
++
++def _ruta_marca_tiempo() -> Path:
++    return directorio_datos_app() / "ultima_actualizacion.json"
++
++
++def _python_del_entorno() -> Path:
++    entorno = _ruta_entorno()
++
++    if platform.system() == "Windows":
++        return entorno / "Scripts" / "python.exe"
++
++    return entorno / "bin" / "python"
++
++
++def entorno_listo() -> bool:
++    return _python_del_entorno().exists()
++
++
++def _buscar_python_sistema() -> str | None:
++    """
++    Busca un intérprete de Python 3 utilizable en el sistema
++    para crear el entorno virtual la primera vez.
++    """
++    candidatos = ["python3", "python"]
++
++    for nombre in candidatos:
++        ruta = shutil.which(nombre)
++
++        if ruta is None:
++            continue
++
++        try:
++            resultado = subprocess.run(
++                [ruta, "--version"],
++                capture_output=True,
++                text=True,
++                timeout=5,
++                check=False
++            )
++
++            salida = (resultado.stdout + resultado.stderr).strip()
++
++            if "Python 3" in salida:
++                return ruta
++
++        except Exception:
++            continue
++
++    # Rutas típicas en macOS cuando no está en PATH todavía.
++    rutas_macos = [
++        "/usr/bin/python3",
++        "/opt/homebrew/bin/python3",
++        "/usr/local/bin/python3",
++    ]
++
++    for ruta in rutas_macos:
++        if Path(ruta).exists():
++            return ruta
++
++    return None
++
++
++def _leer_marca_tiempo() -> float:
++    ruta = _ruta_marca_tiempo()
++
++    if not ruta.exists():
++        return 0.0
++
++    try:
++        with open(ruta, "r", encoding="utf-8") as archivo:
++            datos = json.load(archivo)
++            return float(datos.get("ultima_revision", 0.0))
++
++    except (json.JSONDecodeError, OSError, ValueError):
++        return 0.0
++
++
++def _guardar_marca_tiempo() -> None:
++    try:
++        with open(_ruta_marca_tiempo(), "w", encoding="utf-8") as archivo:
++            json.dump({"ultima_revision": time.time()}, archivo)
++
++    except OSError:
++        pass
++
++
++def _necesita_revision(forzar: bool) -> bool:
++    if forzar:
++        return True
++
++    ultima = _leer_marca_tiempo()
++    horas_transcurridas = (time.time() - ultima) / 3600
++    return horas_transcurridas >= INTERVALO_ACTUALIZACION_HORAS
++
++
++def crear_entorno(mostrar_estado: Callable[[str], None]) -> bool:
++    """
++    Crea el entorno virtual por primera vez e instala spotDL/yt-dlp.
++    Devuelve True si el entorno quedó listo para usarse.
++    """
++    python_sistema = _buscar_python_sistema()
++
++    if python_sistema is None:
++        mostrar_estado(
++            "No se encontró Python 3 en el sistema. "
++            "Instálalo desde python.org y vuelve a abrir SpotDown."
++        )
++        return False
++
++    mostrar_estado("Preparando SpotDown por primera vez...")
++
++    try:
++        subprocess.run(
++            [python_sistema, "-m", "venv", str(_ruta_entorno())],
++            check=True,
++            capture_output=True,
++            text=True,
++            timeout=120
++        )
++
++    except Exception as error:
++        mostrar_estado(f"No se pudo crear el entorno: {error}")
++        return False
++
++    return _instalar_o_actualizar_paquetes(mostrar_estado)
++
++
++def _instalar_o_actualizar_paquetes(
++    mostrar_estado: Callable[[str], None]
++) -> bool:
++    python_entorno = _python_del_entorno()
++
++    if not python_entorno.exists():
++        return False
++
++    try:
++        subprocess.run(
++            [
++                str(python_entorno),
++                "-m",
++                "pip",
++                "install",
++                "--upgrade",
++                "pip",
++            ],
++            capture_output=True,
++            text=True,
++            timeout=60,
++            check=False
++        )
++
++        resultado = subprocess.run(
++            [
++                str(python_entorno),
++                "-m",
++                "pip",
++                "install",
++                "--upgrade",
++                *PAQUETES_GESTIONADOS,
++            ],
++            capture_output=True,
++            text=True,
++            timeout=180,
++            check=False
++        )
++
++        if resultado.returncode != 0:
++            mostrar_estado(
++                "No se pudieron actualizar spotDL/yt-dlp "
++                "(sin conexión o error temporal). "
++                "Se usará la última versión instalada."
++            )
++            # No es un error fatal: seguimos con lo que ya haya instalado.
++            return _python_del_entorno().exists()
++
++        _guardar_marca_tiempo()
++        return True
++
++    except subprocess.TimeoutExpired:
++        mostrar_estado(
++            "La actualización tardó demasiado, se usará "
++            "la última versión instalada."
++        )
++        return _python_del_entorno().exists()
++
++    except Exception as error:
++        mostrar_estado(f"Error al actualizar dependencias: {error}")
++        return _python_del_entorno().exists()
++
++
++def asegurar_entorno(
++    mostrar_estado: Callable[[str], None],
++    forzar_actualizacion: bool = False
++) -> bool:
++    """
++    Punto de entrada principal: garantiza que exista un entorno
++    con spotDL/yt-dlp listo para usarse, y lo actualiza en segundo
++    plano si ya pasó el intervalo configurado (o si se fuerza).
++
++    Se debe llamar al iniciar la app, antes de permitir descargas.
++    """
++    if not entorno_listo():
++        return crear_entorno(mostrar_estado)
++
++    if _necesita_revision(forzar_actualizacion):
++        mostrar_estado("Revisando actualizaciones de spotDL/yt-dlp...")
++        return _instalar_o_actualizar_paquetes(mostrar_estado)
++
++    return True
++
++
++def python_para_descargas() -> str:
++    """
++    Ruta del intérprete a usar para invocar spotDL.
++    Si el entorno gestionado existe, se usa ese; si no, se recurre
++    al intérprete que esté ejecutando la app (modo desarrollo).
++    """
++    python_entorno = _python_del_entorno()
++
++    if python_entorno.exists():
++        return str(python_entorno)
++
++    return sys.executable
+diff --git a/splash.py b/splash.py
+index 619551a..5221fee 100644
+--- a/splash.py
++++ b/splash.py
+@@ -1,21 +1,33 @@
++import sys
++import threading
+ from pathlib import Path
+ 
+ import customtkinter as ctk
+ from PIL import Image
+ 
++import runtime_manager
++
+ 
+ BASE_DIR = Path(__file__).resolve().parent
+ ASSETS_DIR = BASE_DIR / "assets"
+ 
+ 
+ class SplashScreen(ctk.CTkToplevel):
+-    """Pantalla de inicio sencilla para SpotDown."""
++    """Pantalla de inicio de SpotDown.
++
++    Además de mostrarse mientras carga la interfaz, aquí se prepara
++    (o actualiza) el entorno de spotDL/yt-dlp cuando la app corre
++    empaquetada (.app), para que las descargas sigan funcionando
++    aunque YouTube cambie algo desde la última vez que se instaló
++    SpotDown.
++    """
+ 
+     def __init__(self, app: ctk.CTk, duration_ms: int = 1800):
+         super().__init__(app)
+         self.app = app
+         self.duration_ms = duration_ms
+         self.logo = None
++        self._entorno_listo = False
+ 
+         self.overrideredirect(True)
+         self.geometry("420x300")
+@@ -24,8 +36,32 @@ class SplashScreen(ctk.CTkToplevel):
+ 
+         self._centrar()
+         self._crear_interfaz()
++
++        if getattr(sys, "frozen", False):
++            # Solo la app empaquetada necesita el entorno gestionado;
++            # en modo desarrollo se usa el Python/venv del propio VSC.
++            hilo = threading.Thread(
++                target=self._preparar_entorno,
++                daemon=True
++            )
++            hilo.start()
++        else:
++            self._entorno_listo = True
++            self.after(self.duration_ms, self._cerrar)
++
++    def _preparar_entorno(self):
++        listo = runtime_manager.asegurar_entorno(self._actualizar_estado)
++        self._entorno_listo = listo
++        # Aseguramos un mínimo de tiempo visible aunque la
++        # preparación sea instantánea (entorno ya actualizado).
+         self.after(self.duration_ms, self._cerrar)
+ 
++    def _actualizar_estado(self, mensaje: str):
++        self.after(
++            0,
++            lambda: self.lbl_estado.configure(text=mensaje)
++        )
++
+     def _centrar(self):
+         self.update_idletasks()
+         ancho = 420
+@@ -62,11 +98,12 @@ class SplashScreen(ctk.CTkToplevel):
+             font=("Segoe UI", 30, "bold"),
+         ).pack()
+ 
+-        ctk.CTkLabel(
++        self.lbl_estado = ctk.CTkLabel(
+             contenedor,
+             text="Inicializando aplicación...",
+             font=("Segoe UI", 13),
+-        ).pack(pady=(8, 16))
++        )
++        self.lbl_estado.pack(pady=(8, 16))
+ 
+         progreso = ctk.CTkProgressBar(contenedor, width=280, mode="indeterminate")
+         progreso.pack()
+@@ -78,4 +115,14 @@ class SplashScreen(ctk.CTkToplevel):
+         self.destroy()
+         self.app.deiconify()
+         self.app.lift()
+-        self.app.focus_force()
+\ No newline at end of file
++        self.app.focus_force()
++
++        if not self._entorno_listo:
++            self.app.after(
++                300,
++                lambda: self.app.mostrar_error_entorno(
++                    "No se pudo preparar spotDL/yt-dlp. Verifica tu "
++                    "conexión a internet y que Python 3 esté instalado, "
++                    "luego vuelve a abrir SpotDown."
++                )
++            )
+\ No newline at end of file
