@@ -269,6 +269,20 @@ class SpotifyDownloaderApp(ctk.CTk):
             pady=(0, 10)
         )
         
+        self.btn_abrir_musica = ctk.CTkButton(
+            self,
+            text="🎵 Abrir Música",
+            width=180,
+            command=self.abrir_musica
+        )
+
+        self.btn_abrir_musica.grid(
+            row=8,
+            column=0,
+            columnspan=2,
+            pady=(0, 10)
+        )
+                
         self.barra_progreso = ctk.CTkProgressBar(
             self,
             width=400,
@@ -406,6 +420,26 @@ class SpotifyDownloaderApp(ctk.CTk):
         elif sistema == "Linux":
             subprocess.run(["xdg-open", carpeta])
 
+    def abrir_musica(self):
+        sistema = platform.system()
+
+        if sistema == "Darwin":
+            subprocess.run(["open", os.path.expanduser("~/Music")])
+
+        elif sistema == "Windows":
+            carpeta_musica = os.path.join(
+                os.path.expanduser("~"),
+                "Music"
+            )
+            os.startfile(carpeta_musica)
+
+        elif sistema == "Linux":
+            carpeta_musica = os.path.join(
+                os.path.expanduser("~"),
+                "Music"
+            )
+            subprocess.run(["xdg-open", carpeta_musica])
+    
     def agregar_registro(self, mensaje: str):
         self.registro.configure(
             state="normal"
