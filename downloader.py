@@ -58,15 +58,13 @@ def ejecutar_spotdl(
     # de YouTube). Esto evita que una sola fuente caída tumbe toda
     # una playlist o álbum.
     #
-    # --only-verified-results restringe las coincidencias a canales
-    # verificados de artistas, para evitar que se descarguen covers,
-    # remixes o versiones en vivo en lugar de la canción original.
+    # No se usa --only-verified-results: descarta canciones de artistas
+    # sin canal verificado (p. ej. Stardust) y la descarga falla.
     opciones_comunes = [
         "--audio",
         "youtube-music",
         "youtube",
         "piped",
-        "--only-verified-results",
         "--archive",
         archivo_historial,
         "--max-retries",
@@ -144,12 +142,24 @@ def ejecutar_spotdl(
         with _proceso_lock:
             _proceso_actual = proceso
 
+        # spotDL termina con código 0 aunque una canción falle, así que
+        # revisamos su salida para saber si de verdad se descargó algo.
+        errores_detectados = 0
+        canciones_descargadas = 0
+
         if proceso.stdout is not None:
             for linea in proceso.stdout:
                 if _cancelacion_solicitada.is_set():
                     break
 
                 mostrar_linea(linea)
+
+                # Errores reales de spotDL: "LookupError:", "FFmpegError:"...
+                if re.search(r"\b\w+Error:", linea):
+                    errores_detectados += 1
+
+                if linea.lstrip().startswith('Downloaded "'):
+                    canciones_descargadas += 1
                 porcentaje = extraer_porcentaje(linea)
 
                 if porcentaje is not None:
@@ -159,6 +169,17 @@ def ejecutar_spotdl(
 
         if _cancelacion_solicitada.is_set():
             return CODIGO_CANCELADO
+
+        if (
+            codigo_salida == 0
+            and errores_detectados > 0
+            and canciones_descargadas == 0
+        ):
+            mostrar_linea(
+                "\nspotDL no pudo descargar la canción. "
+                "Revisa el error de arriba.\n"
+            )
+            return 1
 
         return codigo_salida
 

@@ -3,8 +3,9 @@ import os
 from datetime import datetime
 
 
-ARCHIVO_HISTORIAL = "historial.json"
+from runtime_manager import directorio_datos_app
 
+ARCHIVO_HISTORIAL = str(directorio_datos_app() / "historial.json")
 
 def cargar_historial():
     if not os.path.exists(ARCHIVO_HISTORIAL):

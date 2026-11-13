@@ -1,7 +1,9 @@
 import json
 import os
 
-ARCHIVO_CONFIG = "config.json"
+from runtime_manager import directorio_datos_app
+
+ARCHIVO_CONFIG = str(directorio_datos_app() / "config.json")
 
 
 def cargar_configuracion():

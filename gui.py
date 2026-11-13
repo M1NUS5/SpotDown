@@ -51,7 +51,7 @@ class SpotifyDownloaderApp(ctk.CTk):
     def __init__(self):
         super().__init__()
         self.title("Spotify Downloader")
-        self.geometry("700x665")
+        self.geometry("700x780")
         self.resizable(False, False)
 
         icono = ASSETS_DIR / "icon.ico"
@@ -292,10 +292,10 @@ class SpotifyDownloaderApp(ctk.CTk):
         self.barra_progreso.set(0)
 
         self.barra_progreso.grid(
-            row=8,
+            row=9,
             column=0,
             columnspan=2,
-            pady=(5, 10)
+            pady=(15, 5)
         )
         
         self.lbl_progreso = ctk.CTkLabel(
@@ -305,7 +305,7 @@ class SpotifyDownloaderApp(ctk.CTk):
         )
 
         self.lbl_progreso.grid(
-            row=9,
+            row=10,
             column=0,
             columnspan=2,
             pady=(0, 5)
@@ -320,7 +320,7 @@ class SpotifyDownloaderApp(ctk.CTk):
         )
 
         self.estado.grid(
-            row=10,
+            row=11,
             column=0,
             columnspan=2,
             pady=10
@@ -334,7 +334,7 @@ class SpotifyDownloaderApp(ctk.CTk):
         )
 
         self.registro.grid(
-            row=11,
+            row=12,
             column=0,
             columnspan=2,
             padx=20,
